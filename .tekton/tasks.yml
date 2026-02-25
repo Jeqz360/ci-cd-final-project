@@ -165,7 +165,7 @@ spec:
     name: oc-lab-pipeline
   params:
     - name: repo-url
-      value: https://github.com/<ORG>/<REPO>.git   # <-- CHANGE THIS
+      value: https://github.com/Jeqz360/ci-cd-final-project.git
     - name: revision
       value: main
   workspaces:
