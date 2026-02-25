@@ -159,7 +159,7 @@ spec:
 apiVersion: tekton.dev/v1beta1
 kind: PipelineRun
 metadata:
-  generateName: oc-lab-pipeline-run-
+  name: oc-lab-pipeline-run
 spec:
   pipelineRef:
     name: oc-lab-pipeline
