@@ -96,14 +96,22 @@ metadata:
 spec:
   workspaces:
     - name: output
+
   params:
     - name: repo-url
       type: string
     - name: revision
       type: string
       default: main
+    - name: app-name
+      type: string
+      default: oc-lab-app
+    - name: build-image
+      type: string
+      default: image-registry.openshift-image-registry.svc:5000/$(context.pipelineRun.namespace)/oc-lab-app:latest
 
   tasks:
+    # 1) cleanup
     - name: cleanup
       taskRef:
         name: cleanup
@@ -111,6 +119,7 @@ spec:
         - name: source
           workspace: output
 
+    # 2) git clone
     - name: git-clone
       runAfter: ["cleanup"]
       taskRef:
@@ -127,6 +136,7 @@ spec:
         - name: output
           workspace: output
 
+    # 3) flake8 linting
     - name: flake8
       runAfter: ["git-clone"]
       taskRef:
@@ -135,6 +145,7 @@ spec:
         - name: source
           workspace: output
 
+    # 4) nose tests
     - name: nose
       runAfter: ["flake8"]
       taskRef:
@@ -143,6 +154,7 @@ spec:
         - name: source
           workspace: output
 
+    # 5) buildah task
     - name: buildah
       runAfter: ["nose"]
       taskRef:
@@ -150,10 +162,21 @@ spec:
         name: buildah
       params:
         - name: IMAGE
-          value: image-registry.openshift-image-registry.svc:5000/$(context.pipelineRun.namespace)/oc-lab-app:latest
+          value: $(params.build-image)
       workspaces:
         - name: source
           workspace: output
+
+    # 6) deploy (openshift-client + oc create deployment ... | oc apply -f -)
+    - name: deploy
+      runAfter: ["buildah"]
+      taskRef:
+        kind: ClusterTask
+        name: openshift-client
+      params:
+        - name: SCRIPT
+          value: |
+            oc create deployment $(params.app-name) --image=$(params.build-image) --dry-run=client -o yaml | oc apply -f -
 
 ---
 apiVersion: tekton.dev/v1beta1
@@ -165,9 +188,13 @@ spec:
     name: oc-lab-pipeline
   params:
     - name: repo-url
-      value: https://github.com/Jeqz360/ci-cd-final-project.git
+      value: https://github.com/<ORG>/<REPO>.git   # <-- CHANGE THIS
     - name: revision
       value: main
+    - name: app-name
+      value: oc-lab-app
+    - name: build-image
+      value: image-registry.openshift-image-registry.svc:5000/$(context.pipelineRun.namespace)/oc-lab-app:latest
   workspaces:
     - name: output
       persistentVolumeClaim:
